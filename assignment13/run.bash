@@ -1,0 +1,1 @@
+ansible-playbook -i hosts.ini vimzipinstall.yaml -k -K

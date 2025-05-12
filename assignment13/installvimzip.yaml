@@ -1,0 +1,10 @@
+- name: vimzipinstall.yaml
+  hosts: linux2
+  become: yes
+  tasks:
+    - name: install vim
+      state: present
+      update_cache: yes
+
+    - name: install zip
+      state: present
