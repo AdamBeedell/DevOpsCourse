@@ -1,62 +1,71 @@
 
 
 import streamlit as st
+from streamlit_webrtc import webrtc_streamer
+import av
 import cv2
+
+st.title("Webcam Dodger")
+
+
+def video_frame_callback(frame):
+    img = frame.to_ndarray(format="bgr24")
+    # ... process with OpenCV here ...
+    return av.VideoFrame.from_ndarray(img, format="bgr24")
+
+webrtc_streamer(key="example", video_frame_callback=video_frame_callback)
 
 ### add the eye-recognizing model from haarcascade
 eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
 
-# one liner for webcam, on first run it'll hang for a bit before asking for permissions
-cap = cv2.VideoCapture(0)
 
-# start circle in top-left
-cx, cy = 20.0, 20.0
-vx, vy = 0.0, 0.0
+### broke below here
 
-## do video
-while True:
-    ret, frame = cap.read()
-    if not ret:
-        break
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-    eyes = eye_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+## find eyes
+# if img:
+#     ret, frame = cap.read()
+#     if not ret:
+        
 
-    # Draw rectangles around detected eyes
-    second = 0 # Colour 2nd eye differently (and any other which wont be tracked)
+#     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+#     eyes = eye_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
 
-    for (x, y, w, h) in eyes:
-        cv2.rectangle(frame, (x, y), (x + w, y + h), (255, second, 0), 2)
-        second = 255
+#     # Draw rectangles around detected eyes
+#     second = 0 # Colour 2nd eye differently (and any other which wont be tracked)
 
-    # Update position if face found
-    if len(eyes) > 0:
-        x, y, w, h = eyes[0]
-        tx, ty = x + w // 2, y + h // 2
+#     for (x, y, w, h) in eyes:
+#         cv2.rectangle(frame, (x, y), (x + w, y + h), (255, second, 0), 2)
+#         second = 255
 
-        dx = tx - cx
-        dy = ty - cy
+#     # Update position if eye found
+#     if len(eyes) > 0:
+#         x, y, w, h = eyes[0]
+#         tx, ty = x + w // 2, y + h // 2
 
-        ax = dx * 0.05
-        ay = dy * 0.05
+#         dx = tx - cx
+#         dy = ty - cy
 
-        vx += ax
-        vy += ay
+#         ax = dx * 0.05
+#         ay = dy * 0.05
 
-        vx *= 0.9
-        vy *= 0.9
+#         vx += ax
+#         vy += ay
 
-        cx += vx
-        cy += vy
+#         vx *= 0.9
+#         vy *= 0.9
 
-    # Draw moving circle
-    cv2.circle(frame, (int(cx), int(cy)), 10, (0, 0, 255), -1)
+#         cx += vx
+#         cy += vy
 
-    cv2.imshow('Video', frame)
+#     # Draw moving circle
+#     cv2.circle(frame, (int(cx), int(cy)), 10, (0, 0, 255), -1)
 
-    if cv2.waitKey(1) & 0xFF == ord('q'):
-        break
+#     cv2.imshow('Video', frame)
 
-cap.release()
-cv2.destroyAllWindows()
+#     if cv2.waitKey(1) & 0xFF == ord('q'):
+#         break
+
+# cap.release()
+# cv2.destroyAllWindows()
 
