@@ -1,71 +1,78 @@
 
 
 import streamlit as st
-from streamlit_webrtc import webrtc_streamer
+from streamlit_webrtc import webrtc_streamer, VideoProcessorBase, RTCConfiguration
 import av
 import cv2
-
-st.title("Webcam Dodger")
-
-
-def video_frame_callback(frame):
-    img = frame.to_ndarray(format="bgr24")
-    # ... process with OpenCV here ...
-    return av.VideoFrame.from_ndarray(img, format="bgr24")
-
-webrtc_streamer(key="example", video_frame_callback=video_frame_callback)
 
 ### add the eye-recognizing model from haarcascade
 eye_cascade = cv2.CascadeClassifier('haarcascade_eye.xml')
 
+if eye_cascade.empty():
+    st.error("Failed to load eye cascade model.")
 
-### broke below here
+if "cx" not in st.session_state:
+    st.session_state.cx, st.session_state.cy = 20.0, 20.0
+    st.session_state.vx, st.session_state.vy = 0.0, 0.0
 
+if "score" not in st.session_state:
+    st.session_state["score"] = 0
 
-## find eyes
-# if img:
-#     ret, frame = cap.read()
-#     if not ret:
-        
+if st.session_state["score"] == 0:
+    st.title(f"Webcam Dodger")
+else:
+    st.title(f"Webcam Dodger - Score: {st.session_state["score"]}")
 
-#     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-#     eyes = eye_cascade.detectMultiScale(gray, scaleFactor=1.1, minNeighbors=5)
+class EyeDodger(VideoProcessorBase):
+    def __init__(self):
+        self.eye_cascade = cv2.CascadeClassifier("haarcascade_eye.xml")
+        self.cx, self.cy = 20.0, 20.0
+        self.vx, self.vy = 0.0, 0.0
 
-#     # Draw rectangles around detected eyes
-#     second = 0 # Colour 2nd eye differently (and any other which wont be tracked)
+    def recv(self, frame):
+        img = frame.to_ndarray(format="bgr24")
+        gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        eyes = self.eye_cascade.detectMultiScale(gray, 1.1, 5)
 
-#     for (x, y, w, h) in eyes:
-#         cv2.rectangle(frame, (x, y), (x + w, y + h), (255, second, 0), 2)
-#         second = 255
+        # Draw rectangles
+        for i, (x, y, w, h) in enumerate(eyes):
+            cv2.rectangle(img, (x, y), (x+w, y+h), (255, 0 if i == 0 else 255, 0), 2)
 
-#     # Update position if eye found
-#     if len(eyes) > 0:
-#         x, y, w, h = eyes[0]
-#         tx, ty = x + w // 2, y + h // 2
+        if len(eyes) > 0:
+            x, y, w, h = eyes[0]
+            tx, ty = x + w // 2, y + h // 2
 
-#         dx = tx - cx
-#         dy = ty - cy
+            dx = tx - self.cx
+            dy = ty - self.cy
 
-#         ax = dx * 0.05
-#         ay = dy * 0.05
+            self.vx += dx * 0.05
+            self.vy += dy * 0.05
+            self.vx *= 0.9
+            self.vy *= 0.9
 
-#         vx += ax
-#         vy += ay
+            self.cx += self.vx
+            self.cy += self.vy
 
-#         vx *= 0.9
-#         vy *= 0.9
+            if not x <= self.cx <= x + w and y <= self.cy <= y + h:
+                st.session_state["score"] += 1
 
-#         cx += vx
-#         cy += vy
+           
+        cv2.circle(img, (int(self.cx), int(self.cy)), 10, (0, 0, 255), -1)
 
-#     # Draw moving circle
-#     cv2.circle(frame, (int(cx), int(cy)), 10, (0, 0, 255), -1)
+        cv2.putText(img, f"Score: {int(st.session_state["score"])}", (10, 60), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+        # cv2.putText(img, 
+        #             text=f"Score: {int(st.session_state["score"])}", 
+        #             org=(10, 60), 
+        #             font=cv2.FONT_HERSHEY_SIMPLEX, 
+        #             fontScale=1, 
+        #             color=(255,255,255), 
+        #             thickness=3)
+        return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-#     cv2.imshow('Video', frame)
+    
+        #return av.VideoFrame.from_ndarray(img, format="bgr24")
 
-#     if cv2.waitKey(1) & 0xFF == ord('q'):
-#         break
-
-# cap.release()
-# cv2.destroyAllWindows()
-
+webrtc_streamer(
+    key="dodger",
+    video_processor_factory=EyeDodger
+)
