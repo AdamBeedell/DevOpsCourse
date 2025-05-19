@@ -1,0 +1,6 @@
+- name: playbook1
+  hosts: all
+  become: yes
+  roles:
+    - common
+
